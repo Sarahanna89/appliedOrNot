@@ -1,3 +1,7 @@
+## needed packages
+library(mlr)
+
+
 ## import both dataframes
 job_desc <- read.csv("job_desc.csv")
 user <- read.csv("user.csv")
@@ -117,3 +121,48 @@ data_ext <- data_ext[, c("has_applied", sort(names(data_ext)[-1]))]
 str(data_ext)
 data_ext <- data_ext[, c(1:2, 57:61, 3:56, 62:117)]
 
+
+
+###############
+## modelling ##
+###############
+
+## define classification task on data_ext
+task_data_ext <- makeClassifTask(id = "data_ext", data = data_ext, target = "has_applied")
+
+## define some initial learners: predict.type = "prob" for AUC
+lrn_rpart <- makeLearner("classif.rpart", predict.type = "prob")
+lrn_lda <- makeLearner("classif.lda", predict.type = "prob")
+lrn_LogReg <- makeLearner("classif.logreg", predict.type="prob")
+lrn_RF <- makeLearner("classif.randomForest", predict.type = "prob")
+lrn_nnet <- makeLearner("classif.nnet", predict.type = "prob")
+lrn_boosting <- makeLearner("classif.ada", predict.type = "prob")
+
+## define resampling strategy (10-fold cross validation) and fixed training 
+## and test sets (set of integer vectors) for every fold 
+set.seed(2020)
+rdesc_cv10_data <- makeResampleDesc(method = "CV", iters = 10)
+rinst_cv10_data <- makeResampleInstance(rdesc_cv10_data, task_data_ext)
+
+## measures
+measures <- list(acc, auc)
+
+## initial benchmark on task_data_ext (no tuning of parameters in first step)
+benchmark_data_ext <- benchmark(learners = list(lrn_rpart, lrn_lda, lrn_LogReg, lrn_RF, lrn_nnet, lrn_boosting), 
+                                tasks = task_data_ext, 
+                                resamplings = rinst_cv10_data, 
+                                measures = measures)
+#   task.id           learner.id acc.test.mean auc.test.mean
+#1 data_ext        classif.rpart        0.6655     0.6644501
+#2 data_ext          classif.lda        0.6490     0.6958887
+#3 data_ext       classif.logreg        0.6500     0.6956917
+#4 data_ext classif.randomForest        0.6660     0.7566905 -> tuning
+#5 data_ext         classif.nnet        0.6345     0.6109226
+#6 data_ext          classif.ada        0.6825     0.7464774 -> tuning
+
+
+## test ROC curve for rpart
+train_rpart <- train(learner = lrn_rpart, task = task_data_ext)
+pred_rpart <- predict(train_rpart, task = task_data_ext) 
+ROC_rpart <- generateThreshVsPerfData(pred_rpart, measures = list(fpr, tpr, mmce, auc))
+plotROCCurves(ROC_rpart)
