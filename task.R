@@ -24,6 +24,7 @@ str(user)
 levels(user$user_id)                                           
 par(ask=TRUE) 
 lapply(user[,3:58], hist)  # conspicuous: all features equally distributed
+# no logarithm needed
 
 ## first data preprocessing: target "has_applied" is binary and should be a factor
 user$has_applied <- factor(user$has_applied, levels = c("0","1"), labels = c("no", "yes"))
@@ -39,6 +40,14 @@ str(data)
 
 ## number of missing values
 sapply(data, function(x) sum(is.na(x)))
+
+## pairwise correlations of numeric features
+cor_matrix <- cor(data[, sapply(data, is.numeric)], use = "pairwise.complete.obs")
+range(cor_matrix - diag(nrwow(cor_matrix))
+#[1] -0.08605054  0.10615617
+
+## no high correlations between features
+## methods for dimension reduction (PCA) not very helpful 
 
 
 
@@ -134,9 +143,11 @@ task_data_ext <- makeClassifTask(id = "data_ext", data = data_ext, target = "has
 lrn_rpart <- makeLearner("classif.rpart", predict.type = "prob")
 lrn_lda <- makeLearner("classif.lda", predict.type = "prob")
 lrn_LogReg <- makeLearner("classif.logreg", predict.type="prob")
-lrn_RF <- makeLearner("classif.randomForest", predict.type = "prob")
+lrn_RF <- makeLearner("classif.randomForest", predict.type = "prob", importance = TRUE)
 lrn_nnet <- makeLearner("classif.nnet", predict.type = "prob")
 lrn_boosting <- makeLearner("classif.ada", predict.type = "prob")
+lrn_boosting2 <- makeLearner("classif.boosting", predict.type = "prob")
+lrn_boosting2 <- setHyperPars(lrn_boosting2, coeflearn = "Freund")
 
 ## define resampling strategy (10-fold cross validation) and fixed training 
 ## and test sets (set of integer vectors) for every fold 
@@ -148,7 +159,7 @@ rinst_cv10_data <- makeResampleInstance(rdesc_cv10_data, task_data_ext)
 measures <- list(acc, auc)
 
 ## initial benchmark on task_data_ext (no tuning of parameters in first step)
-benchmark_data_ext <- benchmark(learners = list(lrn_rpart, lrn_lda, lrn_LogReg, lrn_RF, lrn_nnet, lrn_boosting), 
+benchmark_data_ext <- benchmark(learners = list(lrn_rpart, lrn_lda, lrn_LogReg, lrn_RF, lrn_nnet, lrn_boosting, lrn_boosting2), 
                                 tasks = task_data_ext, 
                                 resamplings = rinst_cv10_data, 
                                 measures = measures)
@@ -162,7 +173,35 @@ benchmark_data_ext <- benchmark(learners = list(lrn_rpart, lrn_lda, lrn_LogReg, 
 
 
 ## test ROC curve for rpart
-train_rpart <- train(learner = lrn_rpart, task = task_data_ext)
-pred_rpart <- predict(train_rpart, task = task_data_ext) 
-ROC_rpart <- generateThreshVsPerfData(pred_rpart, measures = list(fpr, tpr, mmce, auc))
-plotROCCurves(ROC_rpart)
+mod_RF <- train(learner = lrn_RF, task = task_data_ext)
+p_RF <- predict(mod_RF, task = task_data_ext) 
+ROC_RF <- generateThreshVsPerfData(p_RF, measures = list(fpr, tpr, mmce, auc))
+plotROCCurves(ROC_RF)
+
+
+###################
+## Random Forest ##
+###################
+
+## Focus on Random Forest
+
+#### importance of variables ###################################################
+mod_RF <- train(learner = lrn_RF, task = task_data_ext)
+getFeatureImportance(mod_RF)
+varImpPlot(getLearnerModel(mod_RF), main = "Random Forest")
+
+
+#### ROC curves resampling #####################################################
+
+resample_RF <- resample(learner = lrn_RF, task = task_data_ext, 
+                        resampling = rinst_cv10_data, 
+                        measures = list(fpr, tpr, mmce, acc, auc), show.info = TRUE)
+
+par(mfrow = c(1,2))
+ROC_resample_RF <- generateThreshVsPerfData(resample_RF, list(fpr, tpr), aggregate = FALSE)
+ROC_resample_RF_aggr <- generateThreshVsPerfData(resample_RF, list(fpr, tpr), aggregate = TRUE)
+plotROCCurves(ROC_resample_RF)                                  
+plotROCCurves(ROC_resample_RF_aggr)  
+
+                                
+                                  
