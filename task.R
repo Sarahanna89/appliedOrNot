@@ -43,7 +43,7 @@ sapply(data, function(x) sum(is.na(x)))
 
 ## pairwise correlations of numeric features
 cor_matrix <- cor(data[, sapply(data, is.numeric)], use = "pairwise.complete.obs")
-range(cor_matrix - diag(nrwow(cor_matrix))
+range(cor_matrix - diag(nrow(cor_matrix)))
 #[1] -0.08605054  0.10615617
 
 ## no high correlations between features
@@ -202,6 +202,3 @@ ROC_resample_RF <- generateThreshVsPerfData(resample_RF, list(fpr, tpr), aggrega
 ROC_resample_RF_aggr <- generateThreshVsPerfData(resample_RF, list(fpr, tpr), aggregate = TRUE)
 plotROCCurves(ROC_resample_RF)                                  
 plotROCCurves(ROC_resample_RF_aggr)  
-
-                                
-                                  
