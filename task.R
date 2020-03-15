@@ -13,18 +13,44 @@ user <- read.csv("user.csv")
 
 ## first overview of data (in particular variable(-names) and scaling)
 str(job_desc)
-
 summary(job_desc)
+
+## "company"
 table(job_desc$company)
-levels(job_desc$user_id)                 # conspicuous: user only visited once                           
-hist(job_desc$salary)
+
+## "user_id"
+levels(job_desc$user_id)                 # conspicuous: user only visited once                      
+
+## "salary"     
+hist(job_desc$salary, freq = FALSE, xlab = "salary", main = "Histogram of salary")
+
+## "job_title_full"     
 sort(table(job_desc$job_title_full))     # too many levels
+range(table(job_desc$job_title_full))
+
 
 str(user)
+summary(user)
+
+## "has_applied"
+table(user$has_applied)
+#   0    1 
+# 848 1152
+
 levels(user$user_id)                                           
 par(ask=TRUE) 
 lapply(user[,3:58], hist)  # conspicuous: all features equally distributed
 # no logarithm needed
+
+## example hist
+par(mfrow = c(2,3), ask=FALSE)
+hist(user$v1, freq = FALSE, xlab = "v1", main = "Histogram of v1")
+hist(user$v2, freq = FALSE, xlab = "v2", main = "Histogram of v2")
+hist(user$v3, freq = FALSE, xlab = "v3", main = "Histogram of v3")
+hist(user$v4, freq = FALSE, xlab = "v4", main = "Histogram of v4")
+hist(user$v5, freq = FALSE, xlab = "v5", main = "Histogram of v5")
+hist(user$v6, freq = FALSE, xlab = "v6", main = "Histogram of v6")
+
 
 ## first data preprocessing: target "has_applied" is binary and should be a factor
 user$has_applied <- factor(user$has_applied, levels = c("0","1"), labels = c("no", "yes"))
@@ -65,10 +91,14 @@ job
 ## extract first word of string (if present: job titles without this information start with a space, in this case "NA")
 job_title_experience <- factor(ifelse(grepl("^\\w", job), gsub("^(\\w+) .*", "\\1", job), "NA"))
 table(job_title_experience)
+#Junior   Lead     NA Senior 
+#   517    481    491    511
 
 ## accentuation of "m/f/d" present or not 
 job_title_mfd <- factor(grepl("m/f/d", tolower(job)))
 table(job_title_mfd)
+#FALSE  TRUE 
+# 1109   891
 
 ## type/name of job position (without experience status):
 ## split at "-" and filter text before
@@ -78,6 +108,34 @@ job_title_type <- trimws(gsub("^\\w* (.*)$", "\\1", temp))
 ## delete m/f/d information
 job_title_type <- factor(gsub(" *[(]*[mM]/[fF]/[dD][)]*", "", job_title_type))
 table(job_title_type)
+#                AI Researcher         Backend Developer           Backend Engineer 
+#                           60                        56                         51 
+#             Big Data Analyst             Brand Manager    Brand Marketing Manager 
+#                           64                        49                         59 
+# Business Development Manager           Culture Manager               Data Analyst 
+#                           49                        54                         47 
+#              Data Consultant      Data Science Manager             Data Scientist 
+#                           46                        54                         59 
+#            Frontend Engineer             Growth Hacker   Growth Marketing Manager 
+#                           51                        51                         44 
+#    Machine Learning Engineer    Manager Innovation Lab     Manager Policy Affairs 
+#                           52                        46                         56 
+#            Marketing Analyst         Marketing Manager  Offline Marketing Manager 
+#                           35                        60                         49 
+#           Onboarding Manager  Online Marketing Manager         Operations Manager 
+#                           60                        66                         43 
+#Performance Marketing Manager     Product / UX Engineer            Product Analyst 
+#                           47                        55                         49 
+#           Product Consultant           Product Manager              Product Owner 
+#                           41                        51                         46 
+#            Reserch Scientist               SEO Manager              SEO Marketeer 
+#                           46                        43                         58 
+#        SEO Marketing Manager              Shop Manager         Software Developer 
+#                           52                        48                         43 
+#            Software Engineer    Sustainability Manager                UI Designer 
+#                           39                        54                         67 
+range(table(job_title_type))
+#[1] 35 67
 
 ## some extra information in job_title_full:
 ## split at "-" and filter text after
@@ -88,7 +146,17 @@ job_title_extra <- gsub(" *[(]*[mM]/[fF]/[dD][)]*", "", temp2)
 job_title_extra[is.na(job_title_extra)] <- "NA"
 job_title_extra <- factor(job_title_extra)
 table(job_title_extra)
-
+#(Internal Audit)               (Remote)          APAC               Checkout 
+#              55                    336            62                     36 
+#   Deep Learning                     EU        France  Global Transformation 
+#              97                     41           132                     32 
+#          Mobile                     NA  New Ventures                    NLP 
+#             122                    316           359                    130 
+#         Pricing  Pricing & Forecasting  Pricing Team     Supplier Financing 
+#              60                     80            57                     85
+range(table(job_title_extra))
+#[1]  32 359
+                   
 ## add new variables
 data <- cbind(data, job_title_experience, job_title_mfd, job_title_type, job_title_extra) 
 
@@ -129,6 +197,7 @@ data_ext <- data_ext[, c("has_applied", sort(names(data_ext)[-1]))]
 ## sort columns 
 str(data_ext)
 data_ext <- data_ext[, c(1:2, 57:61, 3:56, 62:117)]
+summary(data_ext)
 
 
 
@@ -244,7 +313,7 @@ getLearnerParamSet(lrn_RF)
 set.seed(2020)
 rdesc_cv3_data <- makeResampleDesc("CV", iters = 3)
 
-## use grid Search on parameters "mtry" and "ntree"
+## use grid search on parameters "mtry" and "ntree"
 parameter_to_tune_RF <- makeParamSet(
   makeIntegerParam("mtry", lower = 2, upper = 11),
   makeIntegerParam("ntree", lower = 500, upper = 2000)
@@ -256,7 +325,6 @@ wrapper_RF_tune <- makeTuneWrapper(lrn_RF, resampling = rdesc_cv3_data,
                                    par.set = parameter_to_tune_RF, measures = list(auc), 
                                    control = ctrl_RF, show.info = TRUE)
 
-
 ## benchmark experiment (AUC with tuning)
 set.seed(2020)
 benchmark_RF_tune <- benchmark(wrapper_RF_tune, tasks = task_data_ext, 
@@ -265,6 +333,8 @@ benchmark_RF_tune <- benchmark(wrapper_RF_tune, tasks = task_data_ext,
 benchmark_RF_tune
 #   task.id                 learner.id acc.test.mean auc.test.mean
 #1 data_ext classif.randomForest.tuned         0.663     0.7576018
+
+## -> tuning slightly improves AUC (0.7576 vs. 0.7567) 
 
 
 ## tuning (3-fold cross-validation -> as in inner loop above)
@@ -275,3 +345,42 @@ lrn_RF_tune <- tuneParams(lrn_RF, task = task_data_ext, resampling = rdesc_cv3_d
 #Tune result:
 #Op. pars: mtry=6; ntree=2000
 #auc.test.mean=0.7520628
+
+
+
+################
+## Neural net ##
+################
+
+lrn_nnet <- makeLearner("classif.nnet", predict.type = "prob", MaxNWts = 10000)
+set.seed(2020)
+
+## use grid search on parameters "size", "decay" and "maxit"
+parameter_to_tune_nnet <- makeParamSet(
+  makeIntegerParam("size", lower = 1, upper = 10),
+  makeNumericParam("decay", lower = 0, upper = 10),
+  makeIntegerParam("maxit", lower = 100, upper = 1000)  
+)  
+
+ctrl_nnet <- makeTuneControlGrid(resolution = c(size = 10, decay = 4, maxit = 2)) 
+
+wrapper_nnet_tune <- makeTuneWrapper(lrn_nnet, resampling = rdesc_cv3_data, 
+                                     par.set = parameter_to_tune_nnet, measures = list(auc), 
+                                     control = ctrl_nnet, show.info = TRUE)
+
+## benchmark experiment (AUC with tuning)
+set.seed(2020)
+benchmark_nnet_tune <- benchmark(wrapper_nnet_tune, tasks = task_data_ext, 
+                                 resamplings = rinst_cv10_data, measures = measures, 
+                                 show.info = TRUE)
+benchmark_nnet_tune
+#   task.id         learner.id acc.test.mean auc.test.mean
+#1 data_ext classif.nnet.tuned        0.6755     0.7175714
+
+
+## tuning (3-fold cross-validation -> as in inner loop above)
+set.seed(2020)
+lrn_nnet_tune <- tuneParams(lrn_nnet, task = task_data_ext, resampling = rdesc_cv3_data,
+                            par.set = parameter_to_tune_nnet, control = ctrl_nnet,
+                            measures = list(auc), show.info = TRUE)
+lrn_nnet_tune
