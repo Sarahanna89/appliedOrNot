@@ -272,4 +272,6 @@ set.seed(2020)
 lrn_RF_tune <- tuneParams(lrn_RF, task = task_data_ext, resampling = rdesc_cv3_data,
                           par.set = parameter_to_tune_RF, control = ctrl_RF,
                           measures = list(auc), show.info = TRUE)
-
+#Tune result:
+#Op. pars: mtry=6; ntree=2000
+#auc.test.mean=0.7520628
