@@ -271,11 +271,5 @@ benchmark_RF_tune
 set.seed(2020)
 lrn_RF_tune <- tuneParams(lrn_RF, task = task_data_ext, resampling = rdesc_cv3_data,
                           par.set = parameter_to_tune_RF, control = ctrl_RF,
-                          show.info = TRUE)
-
-
-
-
-
-
+                          measures = list(auc), show.info = TRUE)
 
