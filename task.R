@@ -17,15 +17,19 @@ summary(job_desc)
 
 ## "company"
 table(job_desc$company)
+#  a   b   c   d   e   f   g   h 
+#240 256 235 287 257 246 231 248
 
 ## "user_id"
 levels(job_desc$user_id)                 # conspicuous: user only visited once                      
 
 ## "salary"     
-hist(job_desc$salary, freq = FALSE, xlab = "salary", main = "Histogram of salary")
+hist(job_desc$salary, freq = FALSE, xlab = "salary", main = "")
+title(main = "Histogram of salary", line = 0.5)
 
 ## "job_title_full"     
 sort(table(job_desc$job_title_full))     # too many levels
+levels(job_desc$job_title_full)
 range(table(job_desc$job_title_full))
 
 
@@ -43,13 +47,19 @@ lapply(user[,3:58], hist)  # conspicuous: all features equally distributed
 # no logarithm needed
 
 ## example hist
-par(mfrow = c(2,3), ask=FALSE)
-hist(user$v1, freq = FALSE, xlab = "v1", main = "Histogram of v1")
-hist(user$v2, freq = FALSE, xlab = "v2", main = "Histogram of v2")
-hist(user$v3, freq = FALSE, xlab = "v3", main = "Histogram of v3")
-hist(user$v4, freq = FALSE, xlab = "v4", main = "Histogram of v4")
-hist(user$v5, freq = FALSE, xlab = "v5", main = "Histogram of v5")
-hist(user$v6, freq = FALSE, xlab = "v6", main = "Histogram of v6")
+par(mfrow = c(2,3), mar = c(3.5,3.5,1,1), ask=FALSE)
+hist(user$v1, freq = FALSE, xlab = "", ylab = "", main = "")
+title(xlab = "v1", ylab = "Density", line = c(2.5,2.5))
+hist(user$v2, freq = FALSE, xlab = "", ylab = "", main = "")
+title(xlab = "v2", ylab = "Density", line = c(2.5,2.5))
+hist(user$v3, freq = FALSE, xlab = "", ylab = "", main = "")
+title(xlab = "v3", ylab = "Density", line = c(2.5,2.5))
+hist(user$v4, freq = FALSE, xlab = "", ylab = "", main = "")
+title(xlab = "v4", ylab = "Density", line = c(2.5,2.5))
+hist(user$v5, freq = FALSE, xlab = "", ylab = "", main = "")
+title(xlab = "v5", ylab = "Density", line = c(2.5,2.5))
+hist(user$v6, freq = FALSE, xlab = "", ylab = "", main = "")
+title(xlab = "v6", ylab = "Density", line = c(2.5,2.5))
 
 
 ## first data preprocessing: target "has_applied" is binary and should be a factor
@@ -215,6 +225,7 @@ lrn_LogReg <- makeLearner("classif.logreg", predict.type="prob")
 lrn_RF <- makeLearner("classif.randomForest", predict.type = "prob", importance = TRUE)
 lrn_nnet <- makeLearner("classif.nnet", predict.type = "prob")
 lrn_boosting <- makeLearner("classif.ada", predict.type = "prob")
+## AdaBoost
 lrn_boosting2 <- makeLearner("classif.boosting", predict.type = "prob")
 lrn_boosting2 <- setHyperPars(lrn_boosting2, coeflearn = "Freund")
 
@@ -384,3 +395,6 @@ lrn_nnet_tune <- tuneParams(lrn_nnet, task = task_data_ext, resampling = rdesc_c
                             par.set = parameter_to_tune_nnet, control = ctrl_nnet,
                             measures = list(auc), show.info = TRUE)
 lrn_nnet_tune
+#Tune result:
+#Op. pars: size=5; decay=6.67; maxit=1000
+#auc.test.mean=0.7211100
