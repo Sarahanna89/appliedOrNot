@@ -1,6 +1,6 @@
 ## needed packages
 library(mlr)
-
+library(randomForest)
 
 ## import both dataframes
 job_desc <- read.csv("job_desc.csv")
@@ -159,6 +159,7 @@ rinst_cv10_data <- makeResampleInstance(rdesc_cv10_data, task_data_ext)
 measures <- list(acc, auc)
 
 ## initial benchmark on task_data_ext (no tuning of parameters in first step)
+set.seed(2020)
 benchmark_data_ext <- benchmark(learners = list(lrn_rpart, lrn_lda, lrn_LogReg, lrn_RF, lrn_nnet, lrn_boosting, lrn_boosting2), 
                                 tasks = task_data_ext, 
                                 resamplings = rinst_cv10_data, 
@@ -167,9 +168,10 @@ benchmark_data_ext <- benchmark(learners = list(lrn_rpart, lrn_lda, lrn_LogReg, 
 #1 data_ext        classif.rpart        0.6655     0.6644501
 #2 data_ext          classif.lda        0.6490     0.6958887
 #3 data_ext       classif.logreg        0.6500     0.6956917
-#4 data_ext classif.randomForest        0.6660     0.7566905 -> tuning
-#5 data_ext         classif.nnet        0.6345     0.6109226
-#6 data_ext          classif.ada        0.6825     0.7464774 -> tuning
+#4 data_ext classif.randomForest        0.6720     0.7567295 -> tuning
+#5 data_ext         classif.nnet        0.6245     0.6397298
+#6 data_ext          classif.ada        0.6860     0.7500161 -> tuning
+#7 data_ext     classif.boosting        0.6430     0.6912086
 
 
 ## test ROC curve for rpart
@@ -177,6 +179,7 @@ mod_RF <- train(learner = lrn_RF, task = task_data_ext)
 p_RF <- predict(mod_RF, task = task_data_ext) 
 ROC_RF <- generateThreshVsPerfData(p_RF, measures = list(fpr, tpr, mmce, auc))
 plotROCCurves(ROC_RF)
+
 
 
 ###################
@@ -193,6 +196,7 @@ varImpPlot(getLearnerModel(mod_RF), main = "Random Forest")
 
 #### ROC curves resampling #####################################################
 
+set.seed(2020)
 resample_RF <- resample(learner = lrn_RF, task = task_data_ext, 
                         resampling = rinst_cv10_data, 
                         measures = list(fpr, tpr, mmce, acc, auc), show.info = TRUE)
@@ -202,3 +206,76 @@ ROC_resample_RF <- generateThreshVsPerfData(resample_RF, list(fpr, tpr), aggrega
 ROC_resample_RF_aggr <- generateThreshVsPerfData(resample_RF, list(fpr, tpr), aggregate = TRUE)
 plotROCCurves(ROC_resample_RF)                                  
 plotROCCurves(ROC_resample_RF_aggr)  
+
+
+#### tuning ####################################################################
+
+## Random Forest seems to be good:
+## further tuning of parameters for optimizing AUC
+
+getLearnerParamSet(lrn_RF)
+#                     Type  len   Def   Constr Req Tunable Trafo
+#ntree             integer    -   500 1 to Inf   -    TRUE     -
+#mtry              integer    -     - 1 to Inf   -    TRUE     -
+#replace           logical    -  TRUE        -   -    TRUE     -
+#classwt     numericvector <NA>     - 0 to Inf   -    TRUE     -
+#cutoff      numericvector <NA>     -   0 to 1   -    TRUE     -
+#strata            untyped    -     -        -   -   FALSE     -
+#sampsize    integervector <NA>     - 1 to Inf   -    TRUE     -
+#nodesize          integer    -     1 1 to Inf   -    TRUE     -
+#maxnodes          integer    -     - 1 to Inf   -    TRUE     -
+#importance        logical    - FALSE        -   -    TRUE     -
+#localImp          logical    - FALSE        -   -    TRUE     -
+#proximity         logical    - FALSE        -   -   FALSE     -
+#oob.prox          logical    -     -        -   Y   FALSE     -
+#norm.votes        logical    -  TRUE        -   -   FALSE     -
+#do.trace          logical    - FALSE        -   -   FALSE     -
+#keep.forest       logical    -  TRUE        -   -   FALSE     -
+#keep.inbag        logical    - FALSE        -   -   FALSE     -
+
+## important parameters: ntree (number of trees), 
+## mtry (number of variables randomly sampled as candidates at each split)
+
+## nested cross validation (try to avoid overfitting): estimate error/AUC
+## use AUC as optimization criteria
+
+## use 3-fold cross-validation in inner loop (tuning of parameters)
+## and 10-fold cross-validation in outer loop (determination of AUC) 
+set.seed(2020)
+rdesc_cv3_data <- makeResampleDesc("CV", iters = 3)
+
+## use grid Search on parameters "mtry" and "ntree"
+parameter_to_tune_RF <- makeParamSet(
+  makeIntegerParam("mtry", lower = 2, upper = 11),
+  makeIntegerParam("ntree", lower = 500, upper = 2000)
+)  
+
+ctrl_RF <- makeTuneControlGrid(resolution = c(mtry = 10, ntree = 4)) 
+
+wrapper_RF_tune <- makeTuneWrapper(lrn_RF, resampling = rdesc_cv3_data, 
+                                   par.set = parameter_to_tune_RF, measures = list(auc), 
+                                   control = ctrl_RF, show.info = TRUE)
+
+
+## benchmark experiment (AUC with tuning)
+set.seed(2020)
+benchmark_RF_tune <- benchmark(wrapper_RF_tune, tasks = task_data_ext, 
+                               resamplings = rinst_cv10_data, measures = measures, 
+                               show.info = TRUE)
+benchmark_RF_tune
+#   task.id                 learner.id acc.test.mean auc.test.mean
+#1 data_ext classif.randomForest.tuned         0.663     0.7576018
+
+
+## tuning (3-fold cross-validation -> as in inner loop above)
+set.seed(2020)
+lrn_RF_tune <- tuneParams(lrn_RF, task = task_data_ext, resampling = rdesc_cv3_data,
+                          par.set = parameter_to_tune_RF, control = ctrl_RF,
+                          show.info = TRUE)
+
+
+
+
+
+
+
