@@ -281,10 +281,9 @@ resample_RF <- resample(learner = lrn_RF, task = task_data_ext,
                         resampling = rinst_cv10_data, 
                         measures = list(fpr, tpr, mmce, acc, auc), show.info = TRUE)
 
-par(mfrow = c(1,2))
 ROC_resample_RF <- generateThreshVsPerfData(resample_RF, list(fpr, tpr), aggregate = FALSE)
 ROC_resample_RF_aggr <- generateThreshVsPerfData(resample_RF, list(fpr, tpr), aggregate = TRUE)
-plotROCCurves(ROC_resample_RF)                                  
+plotROCCurves(ROC_resample_RF)    
 plotROCCurves(ROC_resample_RF_aggr)  
 
 
@@ -358,6 +357,27 @@ lrn_RF_tune <- tuneParams(lrn_RF, task = task_data_ext, resampling = rdesc_cv3_d
 #auc.test.mean=0.7520628
 
 
+lrn_RF_optimized <- makeLearner("classif.randomForest", predict.type = "prob", importance = TRUE)
+lrn_RF_optimized <- setHyperPars(lrn_RF_optimized, mtry = lrn_RF_tune$x$mtry, ntree = lrn_RF_tune$x$ntree)
+
+set.seed(2020)
+resample_RF_optimized <- resample(learner = lrn_RF_optimized, task = task_data_ext, 
+                                  resampling = rinst_cv10_data, 
+                                  measures = list(fpr, tpr, mmce, acc, auc), show.info = TRUE)
+
+ROC_resample_RF_optimized <- generateThreshVsPerfData(resample_RF_optimized, list(fpr, tpr), aggregate = FALSE)
+ROC_resample_RF_optimized_aggr <- generateThreshVsPerfData(resample_RF_optimized, list(fpr, tpr), aggregate = TRUE)
+plotROCCurves(ROC_resample_RF_optimized)    
+plotROCCurves(ROC_resample_RF_optimized_aggr)  
+
+                             
+#### importance of variables ###################################################
+
+mod_RF_optimized <- train(learner = lrn_RF_optimized, task = task_data_ext)
+getFeatureImportance(mod_RF_optimized)
+varImpPlot(getLearnerModel(mod_RF_optimized), main = "")
+
+
 
 ################
 ## Neural net ##
@@ -398,3 +418,126 @@ lrn_nnet_tune
 #Tune result:
 #Op. pars: size=5; decay=6.67; maxit=1000
 #auc.test.mean=0.7211100
+
+
+lrn_nnet_optimized <- makeLearner("classif.nnet", predict.type = "prob")
+lrn_nnet_optimized <- setHyperPars(lrn_nnet_optimized, size = lrn_nnet_tune$x$size, 
+                                   decay = lrn_nnet_tune$x$decay, 
+                                   maxit = lrn_nnet_tune$x$maxit)
+
+set.seed(2020)
+resample_nnet_optimized <- resample(learner = lrn_nnet_optimized, task = task_data_ext, 
+                                    resampling = rinst_cv10_data, 
+                                    measures = list(fpr, tpr, mmce, acc, auc), show.info = TRUE)
+#Resample Result
+#Task: data_ext
+#Learner: classif.nnet
+#Aggr perf: fpr.test.mean=0.2133127,tpr.test.mean=0.5460386,mmce.test.mean=0.3160000,acc.test.mean=0.6840000,auc.test.mean=0.7253944
+#Runtime: 46.3845
+
+ROC_resample_nnet_optimized <- generateThreshVsPerfData(resample_nnet_optimized, list(fpr, tpr), aggregate = FALSE)
+ROC_resample_nnet_optimized_aggr <- generateThreshVsPerfData(resample_nnet_optimized, list(fpr, tpr), aggregate = TRUE)
+plotROCCurves(ROC_resample_nnet_optimized)    
+plotROCCurves(ROC_resample_nnet_optimized_aggr)  
+
+
+
+##############
+## AdaBoost ##
+##############
+
+set.seed(2020)
+
+## use grid search on parameter "mfinal"
+parameter_to_tune_boosting2 <- makeParamSet(
+  makeIntegerParam("mfinal", lower = 100, upper = 1000)
+)  
+
+ctrl_boosting2 <- makeTuneControlGrid(resolution = c(mfinal = 10)) 
+
+wrapper_boosting2_tune <- makeTuneWrapper(lrn_boosting2, resampling = rdesc_cv3_data, 
+                                          par.set = parameter_to_tune_boosting2, measures = list(auc), 
+                                          control = ctrl_boosting2, show.info = TRUE)
+
+## benchmark experiment (AUC with tuning)
+set.seed(2020)
+benchmark_boosting2_tune <- benchmark(wrapper_boosting2_tune, tasks = task_data_ext, 
+                                     resamplings = rinst_cv10_data, measures = measures, 
+                                     show.info = TRUE)
+benchmark_boosting2_tune
+#   task.id              learner.id acc.test.mean auc.test.mean
+#1 data_ext classif.boosting2.tuned        0.6785     0.7341851
+
+## tuning (3-fold cross-validation -> as in inner loop above)
+set.seed(2020)
+lrn_boosting2_tune <- tuneParams(lrn_boosting2, task = task_data_ext, resampling = rdesc_cv3_data,
+                                 par.set = parameter_to_tune_boosting2, control = ctrl_boosting2,
+                                 measures = list(auc), show.info = TRUE)
+#Tune result:
+#Op. pars: mfinal=1000
+#auc.test.mean=0.7265383
+                                
+lrn_boosting2_optimized <- makeLearner("classif.boosting", predict.type = "prob")
+lrn_boosting2_optimized <- setHyperPars(lrn_boosting_optimized, coeflearn = "Freund", 
+                                        mfinal = lrn_boosting2_tune$x$mfinal)
+
+set.seed(2020)
+resample_boosting2_optimized <- resample(learner = lrn_boosting2_optimized,
+                                         task = task_data_ext, 
+                                         resampling = rinst_cv10_data, 
+                                         measures = list(fpr, tpr, mmce, acc, auc),
+                                         show.info = TRUE)
+
+par(mfrow = c(1,2))
+ROC_resample_boosting_optimized <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = FALSE)
+ROC_resample_boosting_optimized_aggr <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = TRUE)
+plotROCCurves(ROC_resample_boosting_optimized)    
+plotROCCurves(ROC_resample_boosting_optimized_aggr)  
+
+
+
+##############
+## Boosting ##
+##############
+
+set.seed(2020)
+
+## use grid search on parameter "mfinal"
+parameter_to_tune_boosting <- makeParamSet(
+  makeIntegerParam("iter", lower = 50, upper = 1000)
+)  
+
+ctrl_boosting <- makeTuneControlGrid(resolution = c(iter = 20)) 
+
+wrapper_boosting_tune <- makeTuneWrapper(lrn_boosting, resampling = rdesc_cv3_data, 
+                                         par.set = parameter_to_tune_boosting, measures = list(auc), 
+                                         control = ctrl_boosting, show.info = TRUE)
+
+## benchmark experiment (AUC with tuning)
+set.seed(2020)
+benchmark_boosting_tune <- benchmark(wrapper_boosting_tune, tasks = task_data_ext, 
+                                     resamplings = rinst_cv10_data, measures = measures, 
+                                     show.info = TRUE)
+benchmark_boosting_tune
+
+## tuning (3-fold cross-validation -> as in inner loop above)
+set.seed(2020)
+lrn_boosting_tune <- tuneParams(lrn_boosting, task = task_data_ext, resampling = rdesc_cv3_data,
+                                 par.set = parameter_to_tune_boosting, control = ctrl_boosting,
+                                 measures = list(auc), show.info = TRUE)
+                                
+lrn_boosting_optimized <- makeLearner("classif.ada", predict.type = "prob")
+lrn_boosting_optimized <- setHyperPars(lrn_boosting_optimized, iter = lrn_boosting_tune$x$iter)
+
+set.seed(2020)
+resample_boosting_optimized <- resample(learner = lrn_boosting_optimized,
+                                         task = task_data_ext, 
+                                         resampling = rinst_cv10_data, 
+                                         measures = list(fpr, tpr, mmce, acc, auc),
+                                         show.info = TRUE)
+
+par(mfrow = c(1,2))
+ROC_resample_boosting_optimized <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = FALSE)
+ROC_resample_boosting_optimized_aggr <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = TRUE)
+plotROCCurves(ROC_resample_boosting_optimized)    
+plotROCCurves(ROC_resample_boosting_optimized_aggr)  
