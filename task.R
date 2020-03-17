@@ -462,8 +462,8 @@ wrapper_boosting2_tune <- makeTuneWrapper(lrn_boosting2, resampling = rdesc_cv3_
 ## benchmark experiment (AUC with tuning)
 set.seed(2020)
 benchmark_boosting2_tune <- benchmark(wrapper_boosting2_tune, tasks = task_data_ext, 
-                                     resamplings = rinst_cv10_data, measures = measures, 
-                                     show.info = TRUE)
+                                      resamplings = rinst_cv10_data, measures = measures, 
+                                      show.info = TRUE)
 benchmark_boosting2_tune
 #   task.id              learner.id acc.test.mean auc.test.mean
 #1 data_ext classif.boosting2.tuned        0.6785     0.7341851
@@ -478,7 +478,7 @@ lrn_boosting2_tune <- tuneParams(lrn_boosting2, task = task_data_ext, resampling
 #auc.test.mean=0.7265383
                                 
 lrn_boosting2_optimized <- makeLearner("classif.boosting", predict.type = "prob")
-lrn_boosting2_optimized <- setHyperPars(lrn_boosting_optimized, coeflearn = "Freund", 
+lrn_boosting2_optimized <- setHyperPars(lrn_boosting2_optimized, coeflearn = "Freund", 
                                         mfinal = lrn_boosting2_tune$x$mfinal)
 
 set.seed(2020)
@@ -487,12 +487,29 @@ resample_boosting2_optimized <- resample(learner = lrn_boosting2_optimized,
                                          resampling = rinst_cv10_data, 
                                          measures = list(fpr, tpr, mmce, acc, auc),
                                          show.info = TRUE)
+#Resampling: cross-validation
+#Measures:             fpr       tpr       mmce      acc       auc       
+#[Resample] iter 1:    0.2184874 0.4444444 0.3550000 0.6450000 0.7054674 
+#[Resample] iter 2:    0.3153153 0.5617978 0.3700000 0.6300000 0.6830651 
+#[Resample] iter 3:    0.2429907 0.5161290 0.3550000 0.6450000 0.7205306 
+#[Resample] iter 4:    0.2288136 0.5731707 0.3100000 0.6900000 0.7750103 
+#[Resample] iter 5:    0.2258065 0.5263158 0.3200000 0.6800000 0.7225170 
+#[Resample] iter 6:    0.2413793 0.6071429 0.3050000 0.6950000 0.7707307 
+#[Resample] iter 7:    0.1801802 0.5393258 0.3050000 0.6950000 0.7390424 
+#[Resample] iter 8:    0.2086957 0.6470588 0.2700000 0.7300000 0.7795396 
+#[Resample] iter 9:    0.2857143 0.5540541 0.3450000 0.6550000 0.6916559 
+#[Resample] iter 10:   0.2476190 0.5789474 0.3300000 0.6700000 0.7496742
+resample_boosting2_optimized
+#Resample Result
+#Task: data_ext
+#Learner: classif.boosting
+#Aggr perf: fpr.test.mean=0.2395002,tpr.test.mean=0.5548387,mmce.test.mean=0.3265000,acc.test.mean=0.6735000,auc.test.mean=0.7337233
+#Runtime: 5221.66
 
-par(mfrow = c(1,2))
-ROC_resample_boosting_optimized <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = FALSE)
-ROC_resample_boosting_optimized_aggr <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = TRUE)
-plotROCCurves(ROC_resample_boosting_optimized)    
-plotROCCurves(ROC_resample_boosting_optimized_aggr)  
+ROC_resample_boosting2_optimized <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = FALSE)
+ROC_resample_boosting2_optimized_aggr <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = TRUE)
+plotROCCurves(ROC_resample_boosting2_optimized)    
+plotROCCurves(ROC_resample_boosting2_optimized_aggr)                                
 
 
 
@@ -519,12 +536,17 @@ benchmark_boosting_tune <- benchmark(wrapper_boosting_tune, tasks = task_data_ex
                                      resamplings = rinst_cv10_data, measures = measures, 
                                      show.info = TRUE)
 benchmark_boosting_tune
+#   task.id        learner.id acc.test.mean auc.test.mean
+#1 data_ext classif.ada.tuned         0.686     0.7421657
 
 ## tuning (3-fold cross-validation -> as in inner loop above)
 set.seed(2020)
 lrn_boosting_tune <- tuneParams(lrn_boosting, task = task_data_ext, resampling = rdesc_cv3_data,
                                  par.set = parameter_to_tune_boosting, control = ctrl_boosting,
                                  measures = list(auc), show.info = TRUE)
+#Tune result:
+#Op. pars: iter=100
+#auc.test.mean=0.7401781
                                 
 lrn_boosting_optimized <- makeLearner("classif.ada", predict.type = "prob")
 lrn_boosting_optimized <- setHyperPars(lrn_boosting_optimized, iter = lrn_boosting_tune$x$iter)
@@ -535,8 +557,25 @@ resample_boosting_optimized <- resample(learner = lrn_boosting_optimized,
                                          resampling = rinst_cv10_data, 
                                          measures = list(fpr, tpr, mmce, acc, auc),
                                          show.info = TRUE)
+#Resampling: cross-validation
+#Measures:             fpr       tpr       mmce      acc       auc       
+#[Resample] iter 1:    0.2184874 0.5061728 0.3300000 0.6700000 0.7275651 
+#[Resample] iter 2:    0.2072072 0.4606742 0.3550000 0.6450000 0.7132301 
+#[Resample] iter 3:    0.2242991 0.4408602 0.3800000 0.6200000 0.7324892 
+#[Resample] iter 4:    0.1779661 0.5731707 0.2800000 0.7200000 0.7681893 
+#[Resample] iter 5:    0.2580645 0.5526316 0.3300000 0.6700000 0.7400255 
+#[Resample] iter 6:    0.2241379 0.6428571 0.2800000 0.7200000 0.7838670 
+#[Resample] iter 7:    0.1801802 0.5168539 0.3150000 0.6850000 0.7347910 
+#[Resample] iter 8:    0.2086957 0.5764706 0.3000000 0.7000000 0.7760614 
+#[Resample] iter 9:    0.2063492 0.4324324 0.3400000 0.6600000 0.6999142 
+#[Resample] iter 10:   0.2095238 0.5368421 0.3300000 0.6700000 0.7620050
+resample_boosting_optimized
+#Resample Result
+#Task: data_ext
+#Learner: classif.ada
+#Aggr perf: fpr.test.mean=0.2114911,tpr.test.mean=0.5238966,mmce.test.mean=0.3240000,acc.test.mean=0.6760000,auc.test.mean=0.7438138
+#Runtime: 83.1309
 
-par(mfrow = c(1,2))
 ROC_resample_boosting_optimized <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = FALSE)
 ROC_resample_boosting_optimized_aggr <- generateThreshVsPerfData(resample_boosting_optimized, list(fpr, tpr), aggregate = TRUE)
 plotROCCurves(ROC_resample_boosting_optimized)    
